@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Offline Reader</title>
+    <style>
+        :root { --bg: #f4f1ea; --paper: #ffffff; --text: #2c2c2c; --accent: #8b5e3c; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        #reader-container { width: 95%; max-width: 800px; background: var(--paper); margin: 20px 0; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); min-height: 90vh; white-space: pre-line; font-size: 20px; line-height: 1.8; }
+        .toolbar { position: fixed; top: 0; width: 100%; background: #333; color: white; padding: 10px; display: flex; gap: 10px; justify-content: center; z-index: 1000; }
+        .btn { background: var(--accent); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        input[type="file"] { color: white; }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <input type="file" id="fileInput" accept=".txt">
+    <button class="btn" onclick="toggleTOC()">สารบัญ</button>
+    <button class="btn" onclick="changeChapter(-1)">ก่อนหน้า</button>
+    <button class="btn" onclick="changeChapter(1)">ถัดไป</button>
+    <span id="chapter-title" style="margin-left:10px; font-size: 14px; align-self: center;">กรุณาเลือกไฟล์ .txt</span>
+</div>
+
+<div id="reader-container">
+    <div id="content">วิธีการใช้งาน:<br>1. กดปุ่ม 'Choose File' ด้านบน<br>2. เลือกไฟล์นิยายภาษาจีนของคุณ (.txt)<br>3. ระบบจะแยกตอนให้โดยอัตโนมัติ</div>
+</div>
+
+<div id="toc-modal" style="display:none; position:fixed; top:50px; left:50%; transform:translateX(-50%); width:80%; max-width:500px; height:70vh; background:white; z-index:2000; padding:20px; box-shadow:0 0 20px rgba(0,0,0,0.5); overflow-y:auto; border-radius:10px;">
+    <h3>รายชื่อตอน</h3>
+    <div id="toc-list"></div>
+    <button class="btn" onclick="toggleTOC()" style="width:100%; margin-top:10px;">ปิด</button>
+</div>
+
+<script>
+    let chapters = [];
+    let currentIdx = 0;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const fullText = event.target.result;
+            // แยกตอนด้วย Regex (รองรับ 第...章 หรือ Chapter ... )
+            const chapterRegex = /(?=第\s*\d+\s*[章|回|节])|(?=Chapter\s*\d+)/g;
+            const splitContent = fullText.split(chapterRegex).filter(t => t.trim().length > 0);
+
+            chapters = splitContent.map(text => {
+                const lines = text.trim().split('\n');
+                return { title: lines[0].substring(0, 50), body: text.trim() };
+            });
+
+            currentIdx = 0;
+            render();
+            buildTOC();
+        };
+        reader.readAsText(file);
+    });
+
+    function render() {
+        if (chapters.length === 0) return;
+        document.getElementById('content').innerText = chapters[currentIdx].body;
+        document.getElementById('chapter-title').innerText = chapters[currentIdx].title;
+        window.scrollTo(0,0);
+    }
+
+    function buildTOC() {
+        const list = document.getElementById('toc-list');
+        list.innerHTML = chapters.map((c, i) => `
+            <div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer" onclick="jumpTo(${i})">${c.title}</div>
+        `).join('');
+    }
+
+    function changeChapter(step) {
+        const next = currentIdx + step;
+        if (next >= 0 && next < chapters.length) {
+            currentIdx = next;
+            render();
+        }
+    }
+
+    function jumpTo(i) { currentIdx = i; render(); toggleTOC(); }
+    function toggleTOC() {
+        const m = document.getElementById('toc-modal');
+        m.style.display = (m.style.display === 'none') ? 'block' : 'none';
+    }
+
+    // ปุ่มลูกศรซ้ายขวา
+    window.onkeydown = (e) => {
+        if (e.key === "ArrowRight") changeChapter(1);
+        if (e.key === "ArrowLeft") changeChapter(-1);
+    };
+</script>
+
+</body>
+</html>
