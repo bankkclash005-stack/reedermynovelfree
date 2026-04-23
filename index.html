@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Novel Splitter & Google Translate</title>
+    <style>
+        body { font-family: 'Tahoma', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        
+        /* สไตล์ปุ่มแปลภาษาของ Google */
+        #google_translate_element { margin-bottom: 20px; padding: 10px; background: #e9ecef; border-radius: 8px; }
+
+        #content-display { 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+            background: #fff; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px;
+            line-height: 1.8;
+            font-size: 17px;
+            min-height: 400px;
+            margin-top: 10px;
+        }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px; }
+        .nav-btns button { padding: 10px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: white; }
+        .nav-btns button:hover { background: #f8f9fa; }
+        
+        .btn-download { background: #28a745 !important; color: white !important; border: none !important; font-weight: bold; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .btn-download:hover { background: #218838 !important; }
+
+        .header-box { border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
+        .page-info { font-weight: bold; color: #007bff; }
+        input[type="file"] { margin-bottom: 15px; padding: 10px; border: 1px dashed #aaa; width: 100%; box-sizing: border-box; }
+        
+        /* ซ่อนแถบ Google Translate Banner ด้านบน (ถ้ามี) */
+        .goog-te-banner-frame.skiptranslate { display: none !important; }
+        body { top: 0px !important; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-box">
+        <h2>📖 ระบบแยกบทและแปลนิยาย (Google Translate Integrated)</h2>
+        <input type="file" id="fileInput" accept=".txt">
+        
+        <div id="google_translate_element"></div>
+    </div>
+
+    <div id="page-viewer" style="display:none;">
+        <div class="controls">
+            <span class="page-info" id="pageInfo">หน้าที่ 1</span>
+            <button class="btn-download" onclick="downloadCurrentPage()">💾 ดาวน์โหลดเนื้อหาที่เห็นอยู่ (.txt)</button>
+        </div>
+
+        <div id="content-display" class="notranslate-container"></div>
+
+        <div class="controls">
+            <div class="nav-btns">
+                <button id="prevBtn" onclick="changePage(-1)">⬅️ ก่อนหน้า</button>
+                <button id="nextBtn" onclick="changePage(1)">ถัดไป ➡️</button>
+            </div>
+            <p style="font-size: 12px; color: #888;">*หากแปลแล้วโครงสร้างเพี้ยน ให้กดดาวน์โหลดทันที ระบบจะพยายามดึง Text ล่าสุดออกไป</p>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'zh-CN', 
+    includedLanguages: 'th,en,ja,ko', // เพิ่มภาษาที่ต้องการตรงนี้
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+<script>
+    let chapterGroups = [];
+    let currentPage = 0;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            processNovel(event.target.result);
+        };
+        reader.readAsText(file);
+    });
+
+    function processNovel(text) {
+        // แยกบท (Regex รองรับตัวเลขจีนและเลขอารบิก)
+        const chapters = text.split(/(?=第[0-9一二三四五六七八九十百千]+[章\s])/);
+        chapterGroups = [];
+
+        for (let i = 0; i < chapters.length; i += 2) {
+            let pair = chapters[i];
+            if (chapters[i+1]) pair += "\n\n" + chapters[i+1];
+            chapterGroups.push(pair);
+        }
+
+        if (chapterGroups.length > 0) {
+            currentPage = 0;
+            document.getElementById('page-viewer').style.display = 'block';
+            renderPage();
+        }
+    }
+
+    function renderPage() {
+        const display = document.getElementById('content-display');
+        const pageInfo = document.getElementById('pageInfo');
+        
+        // ใส่คลาส skiptranslate ชั่วคราวเพื่อให้แน่ใจว่าเวลาเปลี่ยนหน้ามันจะดึงค่าต้นฉบับมาก่อน
+        display.innerText = chapterGroups[currentPage];
+        pageInfo.innerText = `หน้า ${currentPage + 1} / ${chapterGroups.length} (บทที่ ${+(currentPage*2)+1}-${+(currentPage*2)+2})`;
+
+        document.getElementById('prevBtn').disabled = currentPage === 0;
+        document.getElementById('nextBtn').disabled = currentPage === chapterGroups.length - 1;
+        
+        window.scrollTo(0, 0);
+    }
+
+    function changePage(step) {
+        currentPage += step;
+        renderPage();
+        // รีเซ็ตการแปลเล็กน้อยเพื่อให้ Google ตรวจพบเนื้อหาใหม่ (บางครั้งต้องกดเลือกภาษาใหม่)
+    }
+
+    function downloadCurrentPage() {
+        // ใช้ innerText เพื่อดึงข้อความที่ Google แปลแล้วบนหน้าจอ
+        const content = document.getElementById('content-display').innerText;
+        const blob = new Blob([content], {type: 'text/plain'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        const chapterRange = `${+(currentPage*2)+1}_${+(currentPage*2)+2}`;
+        a.href = url;
+        a.download = `translated_ch_${chapterRange}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
