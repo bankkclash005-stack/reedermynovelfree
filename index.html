@@ -2,13 +2,29 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Novel Splitter - 3 Chapters per Page</title>
+    <title>Novel Splitter - Top Navigation</title>
     <style>
         body { font-family: 'Tahoma', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
         .header-box { border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
         input[type="file"] { margin-bottom: 15px; padding: 10px; border: 1px dashed #aaa; width: 100%; box-sizing: border-box; cursor: pointer; }
+
+        /* แถบควบคุม */
+        .controls { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin: 20px 0; 
+            gap: 10px; 
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            position: sticky; /* ทำให้แถบบนติดขอบจอเวลาเลื่อนได้ (ถ้าต้องการ) */
+            top: 10px;
+            z-index: 100;
+            border: 1px solid #e2e2e2;
+        }
 
         #content-display { 
             white-space: pre-wrap; 
@@ -20,19 +36,17 @@
             line-height: 1.8;
             font-size: 18px; 
             min-height: 500px;
-            margin-top: 10px;
         }
 
-        .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px; }
-        .nav-btns button { padding: 12px 20px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 16px; }
-        .nav-btns button:hover { background: #f0f0f0; }
+        .nav-btns button { padding: 12px 20px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 16px; font-weight: bold; }
+        .nav-btns button:hover { background: #e9ecef; }
         .nav-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
         
         .btn-download { background: #28a745; color: white; border: none; font-weight: bold; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 16px; }
         .btn-download:hover { background: #218838; }
 
         .page-info { font-weight: bold; color: #d63384; font-size: 16px; }
-        .tips { font-size: 13px; color: #777; margin-top: 10px; font-style: italic; }
+        .tips { font-size: 12px; color: #888; text-align: center; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -40,25 +54,29 @@
 <div class="container">
     <div class="header-box">
         <h2>📖 เครื่องมือแยกบทนิยาย (หน้าละ 3 บท)</h2>
-        <p>อัปโหลด .txt เพื่อแยกหน้าละ 3 บท แล้วใช้ส่วนขยายของคุณแปลได้เลย</p>
         <input type="file" id="fileInput" accept=".txt">
     </div>
 
     <div id="page-viewer" style="display:none;">
         <div class="controls">
-            <span class="page-info" id="pageInfo">หน้าที่ 1</span>
-            <button class="btn-download" onclick="downloadCurrentPage()">💾 ดาวน์โหลด 3 บทนี้ (.txt)</button>
+            <div class="nav-btns">
+                <button class="prevBtn" onclick="changePage(-1)">⬅️ ก่อนหน้า</button>
+                <button class="nextBtn" onclick="changePage(1)">ถัดไป ➡️</button>
+            </div>
+            <span class="page-info pageInfoDisplay">หน้าที่ 1</span>
+            <button class="btn-download" onclick="downloadCurrentPage()">💾 ดาวน์โหลด (.txt)</button>
         </div>
 
         <div id="content-display"></div>
 
         <div class="controls">
             <div class="nav-btns">
-                <button id="prevBtn" onclick="changePage(-1)">⬅️ ก่อนหน้า</button>
-                <button id="nextBtn" onclick="changePage(1)">ถัดไป ➡️</button>
+                <button class="prevBtn" onclick="changePage(-1)">⬅️ ก่อนหน้า</button>
+                <button class="nextBtn" onclick="changePage(1)">ถัดไป ➡️</button>
             </div>
-            <div class="tips">*แนะนำให้แปลให้เสร็จก่อนกดดาวน์โหลด เพื่อให้ได้ไฟล์ภาษาไทย</div>
+            <span class="page-info pageInfoDisplay">หน้าที่ 1</span>
         </div>
+        <div class="tips">*ใช้ส่วนขยายแปลหน้าเว็บให้เสร็จก่อน แล้วกดปุ่มดาวน์โหลดสีเขียว</div>
     </div>
 </div>
 
@@ -78,13 +96,10 @@
     });
 
     function processNovel(text) {
-        // แยกบทด้วยสัญลักษณ์ "第"
         const chapters = text.split(/(?=第[0-9一二三四五六七八九十百千]+[章\s])/);
         const filteredChapters = chapters.filter(c => c.trim().length > 0);
         
         chapterGroups = [];
-
-        // จับคู่ 3 บทต่อ 1 หน้า (เปลี่ยนจาก i += 2 เป็น i += 3)
         for (let i = 0; i < filteredChapters.length; i += 3) {
             let trio = filteredChapters[i];
             if (filteredChapters[i+1]) trio += "\n\n" + filteredChapters[i+1];
@@ -96,26 +111,25 @@
             currentPage = 0;
             document.getElementById('page-viewer').style.display = 'block';
             renderPage();
-        } else {
-            alert("ไม่พบโครงสร้างบทที่ใช้คำว่า '第' กรุณาตรวจสอบไฟล์ต้นฉบับ");
         }
     }
 
     function renderPage() {
         const display = document.getElementById('content-display');
-        const pageInfo = document.getElementById('pageInfo');
+        const infoDisplays = document.querySelectorAll('.pageInfoDisplay');
+        const prevBtns = document.querySelectorAll('.prevBtn');
+        const nextBtns = document.querySelectorAll('.nextBtn');
         
         display.innerText = chapterGroups[currentPage];
         
-        // คำนวณช่วงบทเพื่อแสดงผลใน Page Info
-        const startCh = (currentPage * 3) + 1;
-        const endCh = Math.min((currentPage * 3) + 3, (chapterGroups.length * 3)); // ประมาณการจำนวนบท
+        infoDisplays.forEach(el => {
+            el.innerText = `หน้า ${currentPage + 1} / ${chapterGroups.length}`;
+        });
 
-        pageInfo.innerText = `หน้า ${currentPage + 1} / ${chapterGroups.length} (กลุ่มบทที่ ${startCh} เป็นต้นไป)`;
-
-        document.getElementById('prevBtn').disabled = currentPage === 0;
-        document.getElementById('nextBtn').disabled = currentPage === chapterGroups.length - 1;
+        prevBtns.forEach(btn => btn.disabled = currentPage === 0);
+        nextBtns.forEach(btn => btn.disabled = currentPage === chapterGroups.length - 1);
         
+        // เมื่อเปลี่ยนหน้า ให้เลื่อนกลับขึ้นไปด้านบนสุด
         window.scrollTo(0, 0);
     }
 
@@ -130,8 +144,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         
-        // ตั้งชื่อไฟล์ระบุหน้าที่เท่าไหร่
-        const fileName = `novel_part_page_${currentPage + 1}.txt`;
+        const fileName = `novel_page_${currentPage + 1}.txt`;
         a.href = url;
         a.download = fileName;
         a.click();
