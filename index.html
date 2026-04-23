@@ -2,82 +2,65 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Novel Splitter & Google Translate</title>
+    <title>Novel Splitter - 3 Chapters per Page</title>
     <style>
         body { font-family: 'Tahoma', sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
         .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        /* สไตล์ปุ่มแปลภาษาของ Google */
-        #google_translate_element { margin-bottom: 20px; padding: 10px; background: #e9ecef; border-radius: 8px; }
+        .header-box { border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
+        input[type="file"] { margin-bottom: 15px; padding: 10px; border: 1px dashed #aaa; width: 100%; box-sizing: border-box; cursor: pointer; }
 
         #content-display { 
             white-space: pre-wrap; 
             word-wrap: break-word; 
             background: #fff; 
-            padding: 20px; 
+            padding: 25px; 
             border: 1px solid #ddd; 
             border-radius: 8px;
             line-height: 1.8;
-            font-size: 17px;
-            min-height: 400px;
+            font-size: 18px; 
+            min-height: 500px;
             margin-top: 10px;
         }
 
         .controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; gap: 10px; }
-        .nav-btns button { padding: 10px 15px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background: white; }
-        .nav-btns button:hover { background: #f8f9fa; }
+        .nav-btns button { padding: 12px 20px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; font-size: 16px; }
+        .nav-btns button:hover { background: #f0f0f0; }
+        .nav-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
         
-        .btn-download { background: #28a745 !important; color: white !important; border: none !important; font-weight: bold; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        .btn-download:hover { background: #218838 !important; }
+        .btn-download { background: #28a745; color: white; border: none; font-weight: bold; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        .btn-download:hover { background: #218838; }
 
-        .header-box { border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 15px; }
-        .page-info { font-weight: bold; color: #007bff; }
-        input[type="file"] { margin-bottom: 15px; padding: 10px; border: 1px dashed #aaa; width: 100%; box-sizing: border-box; }
-        
-        /* ซ่อนแถบ Google Translate Banner ด้านบน (ถ้ามี) */
-        .goog-te-banner-frame.skiptranslate { display: none !important; }
-        body { top: 0px !important; }
+        .page-info { font-weight: bold; color: #d63384; font-size: 16px; }
+        .tips { font-size: 13px; color: #777; margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header-box">
-        <h2>📖 ระบบแยกบทและแปลนิยาย (Google Translate Integrated)</h2>
+        <h2>📖 เครื่องมือแยกบทนิยาย (หน้าละ 3 บท)</h2>
+        <p>อัปโหลด .txt เพื่อแยกหน้าละ 3 บท แล้วใช้ส่วนขยายของคุณแปลได้เลย</p>
         <input type="file" id="fileInput" accept=".txt">
-        
-        <div id="google_translate_element"></div>
     </div>
 
     <div id="page-viewer" style="display:none;">
         <div class="controls">
             <span class="page-info" id="pageInfo">หน้าที่ 1</span>
-            <button class="btn-download" onclick="downloadCurrentPage()">💾 ดาวน์โหลดเนื้อหาที่เห็นอยู่ (.txt)</button>
+            <button class="btn-download" onclick="downloadCurrentPage()">💾 ดาวน์โหลด 3 บทนี้ (.txt)</button>
         </div>
 
-        <div id="content-display" class="notranslate-container"></div>
+        <div id="content-display"></div>
 
         <div class="controls">
             <div class="nav-btns">
                 <button id="prevBtn" onclick="changePage(-1)">⬅️ ก่อนหน้า</button>
                 <button id="nextBtn" onclick="changePage(1)">ถัดไป ➡️</button>
             </div>
-            <p style="font-size: 12px; color: #888;">*หากแปลแล้วโครงสร้างเพี้ยน ให้กดดาวน์โหลดทันที ระบบจะพยายามดึง Text ล่าสุดออกไป</p>
+            <div class="tips">*แนะนำให้แปลให้เสร็จก่อนกดดาวน์โหลด เพื่อให้ได้ไฟล์ภาษาไทย</div>
         </div>
     </div>
 </div>
-
-<script type="text/javascript">
-function googleTranslateElementInit() {
-  new google.translate.TranslateElement({
-    pageLanguage: 'zh-CN', 
-    includedLanguages: 'th,en,ja,ko', // เพิ่มภาษาที่ต้องการตรงนี้
-    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay: false
-  }, 'google_translate_element');
-}
-</script>
-<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 
 <script>
     let chapterGroups = [];
@@ -95,20 +78,26 @@ function googleTranslateElementInit() {
     });
 
     function processNovel(text) {
-        // แยกบท (Regex รองรับตัวเลขจีนและเลขอารบิก)
+        // แยกบทด้วยสัญลักษณ์ "第"
         const chapters = text.split(/(?=第[0-9一二三四五六七八九十百千]+[章\s])/);
+        const filteredChapters = chapters.filter(c => c.trim().length > 0);
+        
         chapterGroups = [];
 
-        for (let i = 0; i < chapters.length; i += 2) {
-            let pair = chapters[i];
-            if (chapters[i+1]) pair += "\n\n" + chapters[i+1];
-            chapterGroups.push(pair);
+        // จับคู่ 3 บทต่อ 1 หน้า (เปลี่ยนจาก i += 2 เป็น i += 3)
+        for (let i = 0; i < filteredChapters.length; i += 3) {
+            let trio = filteredChapters[i];
+            if (filteredChapters[i+1]) trio += "\n\n" + filteredChapters[i+1];
+            if (filteredChapters[i+2]) trio += "\n\n" + filteredChapters[i+2];
+            chapterGroups.push(trio);
         }
 
         if (chapterGroups.length > 0) {
             currentPage = 0;
             document.getElementById('page-viewer').style.display = 'block';
             renderPage();
+        } else {
+            alert("ไม่พบโครงสร้างบทที่ใช้คำว่า '第' กรุณาตรวจสอบไฟล์ต้นฉบับ");
         }
     }
 
@@ -116,9 +105,13 @@ function googleTranslateElementInit() {
         const display = document.getElementById('content-display');
         const pageInfo = document.getElementById('pageInfo');
         
-        // ใส่คลาส skiptranslate ชั่วคราวเพื่อให้แน่ใจว่าเวลาเปลี่ยนหน้ามันจะดึงค่าต้นฉบับมาก่อน
         display.innerText = chapterGroups[currentPage];
-        pageInfo.innerText = `หน้า ${currentPage + 1} / ${chapterGroups.length} (บทที่ ${+(currentPage*2)+1}-${+(currentPage*2)+2})`;
+        
+        // คำนวณช่วงบทเพื่อแสดงผลใน Page Info
+        const startCh = (currentPage * 3) + 1;
+        const endCh = Math.min((currentPage * 3) + 3, (chapterGroups.length * 3)); // ประมาณการจำนวนบท
+
+        pageInfo.innerText = `หน้า ${currentPage + 1} / ${chapterGroups.length} (กลุ่มบทที่ ${startCh} เป็นต้นไป)`;
 
         document.getElementById('prevBtn').disabled = currentPage === 0;
         document.getElementById('nextBtn').disabled = currentPage === chapterGroups.length - 1;
@@ -129,19 +122,18 @@ function googleTranslateElementInit() {
     function changePage(step) {
         currentPage += step;
         renderPage();
-        // รีเซ็ตการแปลเล็กน้อยเพื่อให้ Google ตรวจพบเนื้อหาใหม่ (บางครั้งต้องกดเลือกภาษาใหม่)
     }
 
     function downloadCurrentPage() {
-        // ใช้ innerText เพื่อดึงข้อความที่ Google แปลแล้วบนหน้าจอ
         const content = document.getElementById('content-display').innerText;
         const blob = new Blob([content], {type: 'text/plain'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         
-        const chapterRange = `${+(currentPage*2)+1}_${+(currentPage*2)+2}`;
+        // ตั้งชื่อไฟล์ระบุหน้าที่เท่าไหร่
+        const fileName = `novel_part_page_${currentPage + 1}.txt`;
         a.href = url;
-        a.download = `translated_ch_${chapterRange}.txt`;
+        a.download = fileName;
         a.click();
         URL.revokeObjectURL(url);
     }
