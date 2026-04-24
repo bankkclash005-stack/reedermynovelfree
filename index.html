@@ -53,7 +53,7 @@
 
 <div class="container">
     <div class="header-box">
-        <h2>📖 เครื่องมือแยกบทนิยาย (หน้าละ 3 บท)</h2>
+        <h2>📖 เครื่องมือแยกบทนิยาย (หน้าละ 5 บท)</h2>
         <input type="file" id="fileInput" accept=".txt">
     </div>
 
@@ -96,15 +96,23 @@
     });
 
     function processNovel(text) {
+        // แยกบทด้วย Regex เดิม
         const chapters = text.split(/(?=第[0-9一二三四五六七八九十百千]+[章\s])/);
         const filteredChapters = chapters.filter(c => c.trim().length > 0);
         
         chapterGroups = [];
-        for (let i = 0; i < filteredChapters.length; i += 3) {
-            let trio = filteredChapters[i];
-            if (filteredChapters[i+1]) trio += "\n\n" + filteredChapters[i+1];
-            if (filteredChapters[i+2]) trio += "\n\n" + filteredChapters[i+2];
-            chapterGroups.push(trio);
+        const chaptersPerPage = 5; // กำหนดจำนวนบทต่อหน้า
+
+        for (let i = 0; i < filteredChapters.length; i += chaptersPerPage) {
+            let group = [];
+            // ดึงบทที่ i ถึง i+4 (รวม 5 บท)
+            for (let j = 0; j < chaptersPerPage; j++) {
+                if (filteredChapters[i + j]) {
+                    group.push(filteredChapters[i + j]);
+                }
+            }
+            // รวมบทเข้าด้วยกันโดยเว้นบรรทัด
+            chapterGroups.push(group.join("\n\n"));
         }
 
         if (chapterGroups.length > 0) {
